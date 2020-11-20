@@ -13,7 +13,7 @@ namespace Protector
 
             var sourceFile = args[0];
             var destinationFile = args[1];
-            var keysFile = args[2];
+            var keysFile = args[2]; // file for save all keys for all files
             
             var resultCryptFile = CryptFile.EncryptFile(sourceFile);
 
