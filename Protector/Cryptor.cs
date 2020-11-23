@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -13,6 +14,7 @@ namespace Protector
         private readonly string _destinationPath;
         private readonly string _keysPath;
         private readonly List<string> _allPaths = new List<string>();
+        private readonly List<string> _allPathsForDecrypt = new List<string>();
         
         public Cryptor(string sourceFolder, string destinationPath, string keysPath)
         {
@@ -47,6 +49,56 @@ namespace Protector
             }
             
             return true;
+        }
+
+        public static bool Decrypt(Cryptor cryptor, string archivePath, string destinationPath, string keysFile)
+        {
+
+            ZipFile.ExtractToDirectory(archivePath, destinationPath);
+
+            cryptor.GetAllFilesForDecrypt(destinationPath);
+
+            using var keysFileStream = File.Open(keysFile, FileMode.Open);
+            using var memoryStream = new MemoryStream();
+
+            keysFileStream.CopyTo(memoryStream);
+            
+            var keysAndIv = Encoding.UTF8.GetString(memoryStream.ToArray()).Split("\n");
+
+            keysAndIv = keysAndIv.Take(keysAndIv.Count() - 1).ToArray();
+            
+            var keyAndIvSplit = new List<string[]>();
+            
+            foreach (var kiv in keysAndIv)
+            {
+                keyAndIvSplit.Add(kiv.Split("#"));
+            }
+
+            for (var index = 0; index < cryptor._allPathsForDecrypt.Count; index++)
+            {
+                var filePath = cryptor._allPathsForDecrypt[index];
+
+                var keyIv = keyAndIvSplit[index];
+                var key = keyIv[0];
+                var iv = keyIv[1];
+
+                Console.Write(CryptFile.DecryptFile(filePath, key, Encoding.Unicode.GetBytes(iv)));
+            }
+
+            
+            return true;
+        }
+
+        private void GetAllFilesForDecrypt(string sDir)
+        {
+            foreach (var f in Directory.GetFiles(sDir))
+            {
+                this._allPathsForDecrypt.Add(f);
+            }
+            foreach (var d in Directory.GetDirectories(sDir))
+            {
+                GetAllFilesForDecrypt(d);
+            }
         }
         
         private static void ProgressBar(int progress, int tot)
